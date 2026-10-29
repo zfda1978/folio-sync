@@ -1,0 +1,6 @@
+{
+  "name": "FolioQuest - Book Questionnaire & Assessment Studio",
+  "description": "Import books and literary texts to generate intelligent questionnaires, reading guides, quizzes, and Bloom's taxonomy assessments with AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
