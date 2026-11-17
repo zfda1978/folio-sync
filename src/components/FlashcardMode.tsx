@@ -1,35 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   RotateCw,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  AlertCircle,
   Quote,
-  Sparkles,
 } from 'lucide-react';
 import { Book, Question, Questionnaire } from '../types';
+import { inferCognitiveDimension } from '../utils/textParser';
 
 interface FlashcardModeProps {
   questionnaire: Questionnaire;
   book: Book;
+  masteredIds: string[];
+  onToggleMastered: (questionId: string) => void;
   onExit: () => void;
 }
 
 export const FlashcardMode: React.FC<FlashcardModeProps> = ({
   questionnaire,
   book,
+  masteredIds,
+  onToggleMastered,
   onExit,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [masteredIds, setMasteredIds] = useState<string[]>([]);
 
-  const currentQ: Question = questionnaire.questions[currentIndex];
   const total = questionnaire.questions.length;
-  const isMastered = masteredIds.includes(currentQ?.id);
+  const safeIndex = total > 0 ? currentIndex % total : 0;
+  const currentQ: Question | undefined = questionnaire.questions[safeIndex];
+  const isMastered = currentQ ? masteredIds.includes(currentQ.id) : false;
 
-  // Keyboard navigation
+  const handleNext = useCallback(() => {
+    if (total === 0) return;
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev + 1) % total);
+  }, [total]);
+
+  const handlePrev = useCallback(() => {
+    if (total === 0) return;
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev - 1 + total) % total);
+  }, [total]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setIsFlipped(false);
+  }, [questionnaire.id]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
@@ -45,25 +64,9 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, total]);
+  }, [handleNext, handlePrev]);
 
-  const handleNext = () => {
-    setIsFlipped(false);
-    setCurrentIndex((prev) => (prev + 1) % total);
-  };
-
-  const handlePrev = () => {
-    setIsFlipped(false);
-    setCurrentIndex((prev) => (prev - 1 + total) % total);
-  };
-
-  const toggleMastered = (id: string) => {
-    if (masteredIds.includes(id)) {
-      setMasteredIds(masteredIds.filter((item) => item !== id));
-    } else {
-      setMasteredIds([...masteredIds, id]);
-    }
-  };
+  if (!currentQ) return null;
 
   const getAnswerDisplay = (q: Question) => {
     if (q.options && q.options.length > 0 && !isNaN(Number(q.correctAnswer))) {
@@ -74,49 +77,50 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
     return String(q.correctAnswer);
   };
 
+  const masteredInThisDeck = questionnaire.questions.filter((q) => masteredIds.includes(q.id)).length;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={onExit}
-          className="text-xs font-semibold text-stone-600 hover:text-stone-900 flex items-center gap-1.5"
+          className="text-xs font-semibold text-[#111D3B]/70 hover:text-[#111D3B] flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Studio</span>
         </button>
 
-        <div className="text-xs font-bold text-stone-500">
-          Card {currentIndex + 1} of {total} · {masteredIds.length} Mastered
+        <div className="text-xs font-mono tabular-nums font-semibold text-[#111D3B]/70">
+          ZENOXIS Think · {safeIndex + 1}/{total} · {masteredInThisDeck} Mastered
         </div>
       </div>
 
-      {/* Flip Card Container */}
+      {/* Flip Card */}
       <div
         onClick={() => setIsFlipped(!isFlipped)}
-        className="w-full min-h-[380px] bg-white rounded-3xl p-8 border-2 border-stone-200 hover:border-amber-400 shadow-lg cursor-pointer transition-all flex flex-col justify-between relative select-none"
+        className="w-full min-h-[380px] bg-white rounded-2xl p-8 border border-[#A9B9D3]/60 hover:border-[#3978E8] shadow-sm cursor-pointer transition-all flex flex-col justify-between relative select-none"
       >
-        {/* Card Header */}
-        <div className="flex items-center justify-between text-xs text-stone-400">
-          <span className="uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-stone-100 text-stone-700">
-            {isFlipped ? 'Answer &amp; Rationale' : 'Question Prompt'}
+        <div className="flex items-center justify-between text-xs text-[#111D3B]/55">
+          <span className="uppercase font-bold tracking-wider text-[11px] text-[#3978E8]">
+            {isFlipped ? 'Reasoned Answer' : `${book.title} · Prompt`}
           </span>
-          <span className="capitalize">{currentQ.bloomsLevel} Level</span>
+          <span className="uppercase font-mono text-[11px] text-[#8174D5]">
+            {inferCognitiveDimension(currentQ)} · {currentQ.bloomsLevel}
+          </span>
         </div>
 
-        {/* Card Center Content */}
         <div className="my-auto py-6">
           {!isFlipped ? (
             <div className="space-y-4">
-              <h3 className="font-serif text-xl sm:text-2xl font-bold text-stone-900 leading-relaxed">
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#111D3B] leading-relaxed">
                 {currentQ.prompt}
               </h3>
 
               {currentQ.options && currentQ.options.length > 0 && (
                 <div className="space-y-1.5 pt-2">
                   {currentQ.options.map((opt, i) => (
-                    <div key={i} className="text-xs text-stone-600 font-sans pl-2">
-                      <span className="font-bold text-stone-800 mr-2">
+                    <div key={i} className="text-xs text-[#111D3B]/75 pl-2">
+                      <span className="font-mono font-bold text-[#111D3B] mr-2">
                         {String.fromCharCode(65 + i)}.
                       </span>
                       {opt}
@@ -126,23 +130,23 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
               )}
             </div>
           ) : (
-            <div className="space-y-4 animate-in fade-in">
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
-                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block mb-1">
-                  Correct Answer
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-[#51BCA6]/12 border border-[#51BCA6]/50">
+                <span className="text-[10px] uppercase font-bold text-[#2F8A77] tracking-wider block mb-1">
+                  Answer Key
                 </span>
-                <p className="font-serif text-lg font-bold text-emerald-950">
+                <p className="font-serif text-lg font-bold text-[#111D3B]">
                   {getAnswerDisplay(currentQ)}
                 </p>
               </div>
 
-              <div className="text-xs text-stone-700 leading-relaxed space-y-2">
+              <div className="text-xs text-[#111D3B]/80 leading-relaxed space-y-2">
                 <p>
-                  <strong>Explanation:</strong> {currentQ.explanation}
+                  <strong className="text-[#111D3B]">Explanation:</strong> {currentQ.explanation}
                 </p>
                 {currentQ.bookCitation?.quoteSnippet && (
-                  <p className="italic font-serif text-stone-800 bg-stone-50 p-2.5 rounded-lg border border-stone-200 flex items-start gap-1.5">
-                    <Quote className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
+                  <p className="italic font-serif text-sm text-[#111D3B] bg-[#EDF1FA]/60 p-3 rounded-lg border border-[#A9B9D3]/45 flex items-start gap-1.5">
+                    <Quote className="w-3.5 h-3.5 shrink-0 text-[#3978E8] mt-0.5" />
                     <span>“{currentQ.bookCitation.quoteSnippet}”</span>
                   </p>
                 )}
@@ -151,43 +155,40 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({
           )}
         </div>
 
-        {/* Card Footer */}
-        <div className="flex items-center justify-between text-xs text-stone-400 pt-4 border-t border-stone-100">
-          <span className="flex items-center gap-1">
+        <div className="flex items-center justify-between text-xs text-[#111D3B]/45 pt-4 border-t border-[#A9B9D3]/35">
+          <span className="flex items-center gap-1.5">
             <RotateCw className="w-3.5 h-3.5" />
             Click or Space to flip
           </span>
-          <span className="text-[11px] font-sans">
-            Use ← and → arrow keys
-          </span>
+          <span className="text-[11px] font-mono">← / → keys</span>
         </div>
       </div>
 
-      {/* Navigation & Mastery Controls */}
-      <div className="flex items-center justify-between pt-2">
+      {/* Controls */}
+      <div className="flex items-center justify-between pt-1">
         <button
           onClick={handlePrev}
-          className="p-3 text-stone-700 bg-white hover:bg-stone-100 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-1.5 text-xs font-semibold"
+          className="px-4 py-2.5 text-[#111D3B] bg-white hover:bg-[#EDF1FA] rounded-xl border border-[#A9B9D3]/55 flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Previous</span>
         </button>
 
         <button
-          onClick={() => toggleMastered(currentQ.id)}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+          onClick={() => onToggleMastered(currentQ.id)}
+          className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
             isMastered
-              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-              : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200 shadow-xs'
+              ? 'bg-[#51BCA6] text-white'
+              : 'bg-white text-[#111D3B] hover:bg-[#EDF1FA] border border-[#A9B9D3]/55'
           }`}
         >
-          <CheckCircle2 className={`w-4 h-4 ${isMastered ? 'text-emerald-700' : 'text-stone-400'}`} />
-          <span>{isMastered ? 'Marked as Mastered' : 'Mark as Mastered'}</span>
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{isMastered ? 'Concept Mastered' : 'Mark as Mastered'}</span>
         </button>
 
         <button
           onClick={handleNext}
-          className="p-3 text-stone-700 bg-white hover:bg-stone-100 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-1.5 text-xs font-semibold"
+          className="px-4 py-2.5 text-[#111D3B] bg-white hover:bg-[#EDF1FA] rounded-xl border border-[#A9B9D3]/55 flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
         >
           <span>Next</span>
           <ArrowRight className="w-4 h-4" />

@@ -1,14 +1,39 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: "Sora", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-obsidian: #111D3B;
+  --color-intelligence: #3978E8;
+  --color-marble: #EDF1FA;
+  --color-ion: #8174D5;
+  --color-aegean: #A9B9D3;
+  --color-discovery: #51BCA6;
+}
+
 @layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: #EDF1FA;
+    color: #111D3B;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+
   @media print {
     body {
-      background-color: white !important;
-      color: black !important;
+      background-color: #ffffff !important;
+      color: #111D3B !important;
     }
 
     header,
-    nav {
+    nav,
+    .print\:hidden {
       display: none !important;
     }
 

@@ -1,14 +1,19 @@
 import React from 'react';
-import { BookOpen, Sparkles, Plus, Library, FileText, CheckCircle2, Printer } from 'lucide-react';
+import { Plus, User } from 'lucide-react';
 import { Book, Questionnaire } from '../types';
+import { ZenoxisWordmark } from './ZenoxisLogo';
+import { AuthUser } from '../context/AuthContext';
+
+export type ZenoxisTab = 'landing' | 'library' | 'book' | 'questionnaire' | 'quiz' | 'print' | 'flashcards' | 'insight';
 
 interface NavbarProps {
-  currentTab: 'library' | 'book' | 'questionnaire' | 'quiz' | 'print' | 'flashcards';
-  onSelectTab: (tab: 'library' | 'book' | 'questionnaire' | 'quiz' | 'print' | 'flashcards') => void;
+  currentTab: ZenoxisTab;
+  onSelectTab: (tab: ZenoxisTab) => void;
   activeBook: Book | null;
   activeQuestionnaire: Questionnaire | null;
   onOpenImporter: () => void;
-  onOpenGenerator: () => void;
+  user: AuthUser | null;
+  onOpenLogin: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,125 +22,124 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeBook,
   activeQuestionnaire,
   onOpenImporter,
-  onOpenGenerator,
+  user,
+  onOpenLogin,
 }) => {
+  const navItems: Array<{
+    id: ZenoxisTab;
+    label: string;
+    isActive: boolean;
+    disabled?: boolean;
+  }> = [
+    {
+      id: 'library',
+      label: 'Library',
+      isActive: currentTab === 'library' || currentTab === 'book',
+    },
+    {
+      id: 'questionnaire',
+      label: 'Studio',
+      isActive: currentTab === 'questionnaire',
+      disabled: !activeQuestionnaire && !activeBook,
+    },
+    {
+      id: 'quiz',
+      label: 'Assess',
+      isActive: currentTab === 'quiz' || currentTab === 'print',
+      disabled: !activeQuestionnaire,
+    },
+    {
+      id: 'flashcards',
+      label: 'Think',
+      isActive: currentTab === 'flashcards',
+      disabled: !activeQuestionnaire,
+    },
+    {
+      id: 'insight',
+      label: 'Insight',
+      isActive: currentTab === 'insight',
+    },
+  ];
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#A9B9D3]/45 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo & Brand */}
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => onSelectTab('library')}
-              className="flex items-center space-x-2 text-stone-900 hover:text-amber-700 transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-amber-900 flex items-center justify-center text-white shadow-sm ring-1 ring-amber-900/10">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="font-serif text-xl font-bold tracking-tight text-stone-900 flex items-center gap-1.5">
-                  FolioQuest
-                  <span className="text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                    Studio
-                  </span>
-                </span>
-                <p className="text-[11px] text-stone-500 font-sans hidden sm:block">
-                  Book Import &amp; Questionnaire Engine
-                </p>
-              </div>
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-8 h-16">
+          {/* Zone 1: Brand Wordmark Only */}
+          <button
+            onClick={() => onSelectTab('landing')}
+            className="hover:opacity-90 transition-opacity text-left cursor-pointer whitespace-nowrap shrink-0"
+            aria-label="ZENOXIS Home"
+          >
+            <ZenoxisWordmark variant="light" />
+          </button>
 
-          {/* Nav Tabs */}
-          <nav className="hidden md:flex items-center space-x-1">
-            <button
-              onClick={() => onSelectTab('library')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                currentTab === 'library'
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-              }`}
-            >
-              <Library className="w-4 h-4" />
-              Library
-            </button>
-
-            {activeBook && (
+          {/* Zone 2: Core Product Navigation */}
+          <nav className="hidden md:flex items-center gap-1" aria-label="Primary Navigation">
+            {navItems.map((item) => (
               <button
-                onClick={() => onSelectTab('book')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 max-w-[200px] truncate ${
-                  currentTab === 'book'
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                key={item.id}
+                onClick={() => !item.disabled && onSelectTab(item.id)}
+                disabled={item.disabled}
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                  item.isActive
+                    ? 'bg-[#111D3B] text-[#EDF1FA]'
+                    : 'text-[#111D3B]/75 hover:text-[#111D3B] hover:bg-[#EDF1FA]'
                 }`}
-                title={activeBook.title}
               >
-                <BookOpen className="w-4 h-4 shrink-0 text-amber-500" />
-                <span className="truncate">{activeBook.title}</span>
+                {item.label}
               </button>
-            )}
-
-            {activeQuestionnaire && (
-              <>
-                <button
-                  onClick={() => onSelectTab('questionnaire')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    currentTab === 'questionnaire'
-                      ? 'bg-stone-900 text-white shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  Editor
-                </button>
-
-                <button
-                  onClick={() => onSelectTab('quiz')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    currentTab === 'quiz'
-                      ? 'bg-stone-900 text-white shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Interactive Quiz
-                </button>
-
-                <button
-                  onClick={() => onSelectTab('print')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    currentTab === 'print'
-                      ? 'bg-stone-900 text-white shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                  }`}
-                >
-                  <Printer className="w-4 h-4" />
-                  Print / Exam
-                </button>
-              </>
-            )}
+            ))}
           </nav>
 
-          {/* Action CTAs */}
-          <div className="flex items-center space-x-2">
+          {/* Zone 3: Primary Import CTA & Account Action */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={onOpenLogin}
+              className="px-3 py-2 text-xs sm:text-sm font-medium text-[#111D3B] bg-[#EDF1FA] hover:bg-[#A9B9D3]/35 border border-[#A9B9D3]/60 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+              aria-label={user ? `Account: ${user.displayName}` : 'Sign In'}
+            >
+              {user?.photoUrl ? (
+                <img
+                  src={user.photoUrl}
+                  alt={user.displayName}
+                  className="w-5 h-5 rounded-full object-cover shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <User className="w-4 h-4 text-[#3978E8] shrink-0" />
+              )}
+              <span className="max-w-[110px] truncate">
+                {user ? user.displayName.split(' ')[0] : 'Sign In'}
+              </span>
+            </button>
+
             <button
               onClick={onOpenImporter}
-              className="px-3 py-2 text-xs sm:text-sm font-medium text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors flex items-center gap-1.5 border border-stone-200"
+              className="px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-[#3978E8] hover:bg-[#2B64CC] rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Import Book</span>
             </button>
-
-            {activeBook && (
-              <button
-                onClick={onOpenGenerator}
-                className="px-3.5 py-2 text-xs sm:text-sm font-medium text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 rounded-lg shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                <span className="font-semibold">AI Generator</span>
-              </button>
-            )}
           </div>
+        </div>
+
+        {/* Mobile Compact Nav Row */}
+        <div className="flex md:hidden items-center gap-1 pb-2.5 overflow-x-auto">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => !item.disabled && onSelectTab(item.id)}
+              disabled={item.disabled}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors disabled:opacity-40 ${
+                item.isActive
+                  ? 'bg-[#111D3B] text-[#EDF1FA]'
+                  : 'text-[#111D3B]/75 hover:bg-[#EDF1FA]'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
     </header>

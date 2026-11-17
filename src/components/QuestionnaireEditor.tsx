@@ -10,16 +10,18 @@ import {
   FileDown,
   Play,
   Printer,
-  BookOpen,
-  Check,
   Quote,
-  Layers,
-  HelpCircle,
   Loader2,
-  Save,
 } from 'lucide-react';
-import { BloomsLevel, Book, Question, Questionnaire, QuestionType } from '../types';
+import {
+  BloomsLevel,
+  Book,
+  CognitiveDimension,
+  Question,
+  Questionnaire,
+} from '../types';
 import { apiAddSingleQuestion } from '../services/api';
+import { formatAudienceLabel, inferCognitiveDimension } from '../utils/textParser';
 
 interface QuestionnaireEditorProps {
   questionnaire: Questionnaire;
@@ -40,22 +42,22 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
 }) => {
   const [activeFilterType, setActiveFilterType] = useState<string>('all');
   const [activeFilterBlooms, setActiveFilterBlooms] = useState<string>('all');
+  const [activeFilterDimension, setActiveFilterDimension] = useState<string>('all');
   const [isGeneratingExtra, setIsGeneratingExtra] = useState(false);
   const [extraQuestionGoal, setExtraQuestionGoal] = useState('');
+  const [extraDimension, setExtraDimension] = useState<CognitiveDimension>('critical');
   const [showAddAiModal, setShowAddAiModal] = useState(false);
-  const [saveToast, setSaveToast] = useState(false);
 
   const totalPoints = questionnaire.questions.reduce((sum, q) => sum + (Number(q.points) || 5), 0);
 
   const handleUpdateQuestion = (index: number, updatedQ: Question) => {
     const newQuestions = [...questionnaire.questions];
     newQuestions[index] = updatedQ;
-    const updated = {
+    onUpdateQuestionnaire({
       ...questionnaire,
       questions: newQuestions,
       updatedAt: new Date().toISOString(),
-    };
-    onUpdateQuestionnaire(updated);
+    });
   };
 
   const handleDeleteQuestion = (index: number) => {
@@ -110,11 +112,12 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
     const newQ: Question = {
       id: `q-${Date.now()}`,
       type: 'multiple_choice',
-      prompt: 'New Question prompt based on ' + book.title,
+      prompt: `New reasoning question based on ${book.title}`,
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       correctAnswer: '0',
-      explanation: 'Explanation for why Option A is supported by the text.',
-      bloomsLevel: 'understand',
+      explanation: 'Explanation grounded in the source text.',
+      bloomsLevel: 'analyze',
+      cognitiveDimension: 'logical',
       points: 5,
       bookCitation: {
         chapter: book.chapters[0]?.title || 'Chapter 1',
@@ -137,8 +140,12 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
         author: book.author,
         bookContent: fullText,
         questionType: 'multiple_choice',
-        bloomsLevel: 'analyze',
-        userGoal: extraQuestionGoal.trim() || 'Create a question focusing on central motifs and character choices',
+        bloomsLevel: extraDimension === 'innovative' ? 'create' : 'analyze',
+        cognitiveDimension: extraDimension,
+        targetAudience: questionnaire.targetAudience,
+        userGoal:
+          extraQuestionGoal.trim() ||
+          `Craft a ${extraDimension} reasoning question testing cause, evidence, and synthesis`,
       });
       onUpdateQuestionnaire({
         ...questionnaire,
@@ -155,68 +162,67 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
   };
 
   const filteredQuestions = questionnaire.questions.filter((q) => {
+    const dim = inferCognitiveDimension(q);
     if (activeFilterType !== 'all' && q.type !== activeFilterType) return false;
     if (activeFilterBlooms !== 'all' && q.bloomsLevel !== activeFilterBlooms) return false;
+    if (activeFilterDimension !== 'all' && dim !== activeFilterDimension) return false;
     return true;
   });
 
-  const getBloomsBadgeColor = (level: BloomsLevel) => {
-    switch (level) {
-      case 'remember':
-        return 'bg-blue-50 text-blue-800 border-blue-200';
-      case 'understand':
-        return 'bg-cyan-50 text-cyan-800 border-cyan-200';
-      case 'apply':
-        return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-      case 'analyze':
-        return 'bg-amber-50 text-amber-800 border-amber-200';
-      case 'evaluate':
-        return 'bg-purple-50 text-purple-800 border-purple-200';
-      case 'create':
-        return 'bg-rose-50 text-rose-800 border-rose-200';
-      default:
-        return 'bg-stone-50 text-stone-700 border-stone-200';
+  const dimensionColorText = (dim: CognitiveDimension) => {
+    switch (dim) {
+      case 'logical':
+        return 'text-[#3978E8]';
+      case 'rational':
+        return 'text-[#111D3B]';
+      case 'critical':
+        return 'text-[#8174D5]';
+      case 'innovative':
+        return 'text-[#51BCA6]';
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Questionnaire Top Header & Metadata */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200 shadow-sm space-y-4">
+      {/* Studio Header Card */}
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#A9B9D3]/55 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
-              {questionnaire.targetAudience.replace('_', ' ')}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[#111D3B]/65">
+            <span className="font-bold text-[#3978E8] uppercase tracking-wider">
+              ZENOXIS Studio
             </span>
-            <span className="text-xs capitalize font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-700">
-              {questionnaire.difficulty} Level
+            <span>·</span>
+            <span className="font-semibold text-[#111D3B]">
+              {formatAudienceLabel(questionnaire.targetAudience)}
             </span>
-            <span className="text-xs font-medium text-stone-500">
-              Book: <strong className="text-stone-800">{book.title}</strong>
+            <span>·</span>
+            <span className="capitalize">{questionnaire.difficulty} tier</span>
+            <span>·</span>
+            <span>
+              Source: <strong className="text-[#111D3B]">{book.title}</strong>
             </span>
           </div>
 
-          {/* Quick Actions */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onStartQuiz}
-              className="px-4 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-white bg-[#51BCA6] hover:bg-[#3FA590] rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Interactive Quiz</span>
+              <span>Launch Web Exam</span>
             </button>
 
             <button
               onClick={onOpenPrint}
-              className="px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl border border-stone-200 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 text-xs font-semibold text-[#111D3B] bg-[#EDF1FA] hover:bg-[#A9B9D3]/35 rounded-xl border border-[#A9B9D3]/50 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Printable Exam</span>
+              <span>Printable PDF</span>
             </button>
 
             <button
               onClick={onOpenExport}
-              className="px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl border border-stone-200 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 text-xs font-semibold text-[#111D3B] bg-[#EDF1FA] hover:bg-[#A9B9D3]/35 rounded-xl border border-[#A9B9D3]/50 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <FileDown className="w-3.5 h-3.5" />
               <span>Export</span>
@@ -236,7 +242,7 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                 updatedAt: new Date().toISOString(),
               })
             }
-            className="w-full font-serif text-2xl sm:text-3xl font-bold text-stone-900 border-b border-transparent hover:border-stone-300 focus:border-amber-600 focus:outline-hidden pb-1 bg-transparent transition-colors"
+            className="w-full font-['Sora'] text-2xl sm:text-3xl font-bold text-[#111D3B] border-b border-transparent hover:border-[#A9B9D3] focus:border-[#3978E8] focus:outline-hidden pb-1 bg-transparent transition-colors"
           />
           <textarea
             value={questionnaire.description}
@@ -248,44 +254,58 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
               })
             }
             rows={2}
-            className="w-full text-xs sm:text-sm text-stone-600 border border-transparent hover:border-stone-200 focus:border-amber-600 rounded-lg p-1.5 focus:outline-hidden bg-transparent leading-relaxed"
+            className="w-full text-xs sm:text-sm text-[#111D3B]/75 border border-transparent hover:border-[#A9B9D3]/60 focus:border-[#3978E8] rounded-lg p-1.5 focus:outline-hidden bg-transparent leading-relaxed"
           />
         </div>
 
-        {/* Stats Row */}
-        <div className="flex flex-wrap items-center gap-6 pt-3 border-t border-stone-100 text-xs text-stone-600">
-          <div>
-            <span className="font-bold text-stone-900">{questionnaire.questions.length}</span> Questions
-          </div>
-          <div>
-            <span className="font-bold text-stone-900">{totalPoints}</span> Total Points
-          </div>
-          <div>
-            Scope: <span className="font-medium text-stone-800">{questionnaire.chapterScope.join(', ') || 'Full Book'}</span>
-          </div>
+        {/* Clean Unboxed Stats */}
+        <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-[#A9B9D3]/35 text-xs font-mono tabular-nums text-[#111D3B]/70">
+          <span>
+            <strong className="text-[#111D3B]">{questionnaire.questions.length}</strong> Questions
+          </span>
+          <span>·</span>
+          <span>
+            <strong className="text-[#111D3B]">{totalPoints}</strong> Total Points
+          </span>
+          <span>·</span>
+          <span className="font-sans">
+            Scope: <strong className="text-[#111D3B]">{questionnaire.chapterScope.join(', ') || 'Full Book'}</strong>
+          </span>
         </div>
       </div>
 
-      {/* Toolbar & Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
+      {/* Studio Filters & Authoring Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#A9B9D3]/50">
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={activeFilterType}
             onChange={(e) => setActiveFilterType(e.target.value)}
-            className="px-2.5 py-1.5 text-xs font-medium border border-stone-300 rounded-lg bg-stone-50 text-stone-700"
+            className="px-2.5 py-1.5 text-xs font-medium border border-[#A9B9D3] rounded-lg bg-[#EDF1FA]/50 text-[#111D3B]"
           >
-            <option value="all">All Question Types</option>
+            <option value="all">All Formats</option>
             <option value="multiple_choice">Multiple Choice</option>
             <option value="true_false">True / False</option>
             <option value="short_answer">Short Answer</option>
-            <option value="quote_identification">Quote Identification</option>
-            <option value="essay">Essay Prompt</option>
+            <option value="quote_identification">Passage Identification</option>
+            <option value="essay">Extended Prompt</option>
+          </select>
+
+          <select
+            value={activeFilterDimension}
+            onChange={(e) => setActiveFilterDimension(e.target.value)}
+            className="px-2.5 py-1.5 text-xs font-medium border border-[#A9B9D3] rounded-lg bg-[#EDF1FA]/50 text-[#111D3B]"
+          >
+            <option value="all">All Reasoning Modes</option>
+            <option value="logical">Logical</option>
+            <option value="rational">Rational</option>
+            <option value="critical">Critical</option>
+            <option value="innovative">Innovative</option>
           </select>
 
           <select
             value={activeFilterBlooms}
             onChange={(e) => setActiveFilterBlooms(e.target.value)}
-            className="px-2.5 py-1.5 text-xs font-medium border border-stone-300 rounded-lg bg-stone-50 text-stone-700"
+            className="px-2.5 py-1.5 text-xs font-medium border border-[#A9B9D3] rounded-lg bg-[#EDF1FA]/50 text-[#111D3B]"
           >
             <option value="all">All Bloom Levels</option>
             <option value="remember">Remember</option>
@@ -298,8 +318,7 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
 
           <button
             onClick={handleShuffle}
-            className="px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg flex items-center gap-1 transition-colors"
-            title="Randomize question order"
+            className="px-2.5 py-1.5 text-xs font-medium text-[#111D3B]/75 hover:text-[#111D3B] bg-[#EDF1FA] hover:bg-[#A9B9D3]/35 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
             <span>Shuffle</span>
@@ -309,59 +328,74 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAddAiModal(true)}
-            className="px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#8174D5] hover:bg-[#6D5EC4] rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>+ AI Generated Question</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Add via ZENOXIS AI</span>
           </button>
 
           <button
             onClick={handleAddManualQuestion}
-            className="px-3 py-1.5 text-xs font-semibold text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 text-xs font-semibold text-[#111D3B] bg-[#EDF1FA] hover:bg-[#A9B9D3]/40 border border-[#A9B9D3]/55 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Manual Question</span>
+            <span>Manual Question</span>
           </button>
         </div>
       </div>
 
-      {/* AI Single Question Generator Modal */}
+      {/* Add AI Question Modal */}
       {showAddAiModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-stone-200 space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#111D3B]/65 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-[#A9B9D3] space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-serif font-bold text-lg text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                Generate Additional Question
+              <h3 className="font-bold text-lg text-[#111D3B] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#8174D5]" />
+                <span>Add Question with ZENOXIS AI</span>
               </h3>
               <button
                 onClick={() => setShowAddAiModal(false)}
-                className="text-stone-400 hover:text-stone-600"
+                className="text-[#111D3B]/50 hover:text-[#111D3B] cursor-pointer"
               >
                 ✕
               </button>
             </div>
-            <p className="text-xs text-stone-500">
-              Prompt Gemini to add one custom question based on any character, motif, or plot point in <span className="font-semibold text-stone-700">{book.title}</span>.
+            <p className="text-xs text-[#111D3B]/70">
+              Generate one new source-grounded question for <strong className="text-[#111D3B]">{book.title}</strong>.
             </p>
+            <div>
+              <label className="block text-xs font-semibold text-[#111D3B] mb-1">
+                Reasoning Dimension
+              </label>
+              <select
+                value={extraDimension}
+                onChange={(e) => setExtraDimension(e.target.value as CognitiveDimension)}
+                className="w-full text-xs p-2 border border-[#A9B9D3] rounded-lg bg-white text-[#111D3B]"
+              >
+                <option value="logical">Logical — Cause, sequence &amp; deduction</option>
+                <option value="rational">Rational — Evidence-backed comprehension</option>
+                <option value="critical">Critical — Evaluate motives &amp; perspective</option>
+                <option value="innovative">Innovative — Counterfactual &amp; creative synthesis</option>
+              </select>
+            </div>
             <textarea
               value={extraQuestionGoal}
               onChange={(e) => setExtraQuestionGoal(e.target.value)}
-              placeholder="e.g. Focus on Daisy's white dresses and what they suggest about superficial purity vs corruption..."
+              placeholder="e.g. Test what would happen if Gatsby had revealed his past to Daisy early on..."
               rows={3}
-              className="w-full text-xs p-2.5 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              className="w-full text-xs p-2.5 border border-[#A9B9D3] rounded-lg focus:ring-2 focus:ring-[#3978E8] focus:outline-hidden text-[#111D3B]"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowAddAiModal(false)}
-                className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded-lg"
+                className="px-3 py-1.5 text-xs text-[#111D3B]/70 hover:bg-[#EDF1FA] rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddAiQuestion}
                 disabled={isGeneratingExtra}
-                className="px-4 py-2 text-xs font-semibold text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-50 rounded-lg flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#3978E8] hover:bg-[#2B64CC] disabled:opacity-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
               >
                 {isGeneratingExtra ? (
                   <>
@@ -369,7 +403,7 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                     <span>Generating...</span>
                   </>
                 ) : (
-                  <span>Add Question to Studio</span>
+                  <span>Add to Studio</span>
                 )}
               </button>
             </div>
@@ -380,36 +414,39 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
       {/* Question List */}
       <div className="space-y-4">
         {filteredQuestions.length === 0 ? (
-          <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-stone-300">
-            <p className="text-xs text-stone-500">No questions match the current filter.</p>
+          <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-[#A9B9D3]">
+            <p className="text-xs text-[#111D3B]/60">No questions match the current filter.</p>
           </div>
         ) : (
           filteredQuestions.map((q) => {
             const index = questionnaire.questions.findIndex((item) => item.id === q.id);
+            const dim = inferCognitiveDimension(q);
 
             return (
               <div
                 key={q.id}
-                className="bg-white rounded-2xl p-5 sm:p-6 border border-stone-200 hover:border-stone-300 shadow-xs transition-all space-y-4"
+                className="bg-white rounded-2xl p-5 sm:p-6 border border-[#A9B9D3]/50 hover:border-[#3978E8]/60 transition-all space-y-4"
               >
-                {/* Question Item Header */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-stone-900 text-white font-serif font-bold text-xs flex items-center justify-center">
+                {/* Item Header — Zero Pills */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                    <span className="w-7 h-7 rounded-lg bg-[#111D3B] text-white font-mono tabular-nums font-bold text-xs flex items-center justify-center">
                       {index + 1}
                     </span>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                    <span className="uppercase font-semibold tracking-wider text-[11px] text-[#111D3B]/70">
                       {q.type.replace('_', ' ')}
                     </span>
-                    <span
-                      className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${getBloomsBadgeColor(
-                        q.bloomsLevel
-                      )}`}
-                    >
+                    <span className="text-[#A9B9D3]">·</span>
+                    <span className={`uppercase font-bold tracking-wider text-[11px] ${dimensionColorText(dim)}`}>
+                      {dim}
+                    </span>
+                    <span className="text-[#A9B9D3]">·</span>
+                    <span className="text-[11px] text-[#111D3B]/60 capitalize">
                       Bloom: {q.bloomsLevel}
                     </span>
-                    <div className="flex items-center gap-1 text-xs text-stone-500 pl-2">
-                      <span>Points:</span>
+                    <span className="text-[#A9B9D3]">·</span>
+                    <div className="flex items-center gap-1 text-xs text-[#111D3B]/70">
+                      <span>Pts:</span>
                       <input
                         type="number"
                         min={1}
@@ -421,17 +458,16 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                             points: Number(e.target.value) || 5,
                           })
                         }
-                        className="w-12 px-1.5 py-0.5 text-xs border border-stone-300 rounded text-center font-bold"
+                        className="w-12 px-1.5 py-0.5 text-xs font-mono tabular-nums border border-[#A9B9D3] rounded text-center font-bold text-[#111D3B]"
                       />
                     </div>
                   </div>
 
-                  {/* Move, Copy, Delete Buttons */}
-                  <div className="flex items-center gap-1 text-stone-400">
+                  <div className="flex items-center gap-1 text-[#111D3B]/45">
                     <button
                       onClick={() => handleMoveQuestion(index, 'up')}
                       disabled={index === 0}
-                      className="p-1 hover:text-stone-700 hover:bg-stone-100 rounded disabled:opacity-30"
+                      className="p-1 hover:text-[#111D3B] hover:bg-[#EDF1FA] rounded disabled:opacity-30 cursor-pointer"
                       title="Move Up"
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -439,21 +475,21 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                     <button
                       onClick={() => handleMoveQuestion(index, 'down')}
                       disabled={index === questionnaire.questions.length - 1}
-                      className="p-1 hover:text-stone-700 hover:bg-stone-100 rounded disabled:opacity-30"
+                      className="p-1 hover:text-[#111D3B] hover:bg-[#EDF1FA] rounded disabled:opacity-30 cursor-pointer"
                       title="Move Down"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDuplicateQuestion(index)}
-                      className="p-1 hover:text-stone-700 hover:bg-stone-100 rounded"
+                      className="p-1 hover:text-[#111D3B] hover:bg-[#EDF1FA] rounded cursor-pointer"
                       title="Duplicate Question"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteQuestion(index)}
-                      className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded"
+                      className="p-1 hover:text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
                       title="Delete Question"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -461,28 +497,23 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                   </div>
                 </div>
 
-                {/* Question Prompt */}
-                <div>
-                  <textarea
-                    value={q.prompt}
-                    onChange={(e) =>
-                      handleUpdateQuestion(index, {
-                        ...q,
-                        prompt: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    className="w-full text-sm font-medium text-stone-900 border border-stone-200 focus:border-amber-600 rounded-xl p-3 focus:outline-hidden bg-stone-50/50 leading-relaxed font-serif"
-                    placeholder="Enter question text..."
-                  />
-                </div>
+                {/* Editable Prompt */}
+                <textarea
+                  value={q.prompt}
+                  onChange={(e) =>
+                    handleUpdateQuestion(index, {
+                      ...q,
+                      prompt: e.target.value,
+                    })
+                  }
+                  rows={2}
+                  className="w-full font-serif text-lg font-semibold text-[#111D3B] border border-[#A9B9D3]/50 focus:border-[#3978E8] rounded-xl p-3 focus:outline-hidden bg-[#EDF1FA]/30 leading-snug"
+                  placeholder="Enter question text..."
+                />
 
-                {/* Multiple Choice / True-False Options */}
+                {/* Choices */}
                 {q.options && q.options.length > 0 && (
-                  <div className="space-y-2 pl-2">
-                    <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                      Options (Select the correct radio):
-                    </p>
+                  <div className="space-y-2">
                     {q.options.map((opt, optIdx) => {
                       const isCorrect = String(q.correctAnswer) === String(optIdx);
                       const letter = String.fromCharCode(65 + optIdx);
@@ -492,8 +523,8 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                           key={optIdx}
                           className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
                             isCorrect
-                              ? 'bg-emerald-50/60 border-emerald-400'
-                              : 'bg-white border-stone-200 hover:border-stone-300'
+                              ? 'bg-[#51BCA6]/12 border-[#51BCA6]'
+                              : 'bg-white border-[#A9B9D3]/45 hover:border-[#3978E8]/50'
                           }`}
                         >
                           <input
@@ -506,13 +537,13 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                                 correctAnswer: String(optIdx),
                               })
                             }
-                            className="accent-emerald-700 w-4 h-4 cursor-pointer"
+                            className="accent-[#51BCA6] w-4 h-4 cursor-pointer"
                           />
                           <span
-                            className={`w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shrink-0 ${
+                            className={`w-6 h-6 rounded-md text-xs font-mono font-bold flex items-center justify-center shrink-0 ${
                               isCorrect
-                                ? 'bg-emerald-700 text-white'
-                                : 'bg-stone-100 text-stone-600'
+                                ? 'bg-[#51BCA6] text-white'
+                                : 'bg-[#EDF1FA] text-[#111D3B]'
                             }`}
                           >
                             {letter}
@@ -525,11 +556,11 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                               newOpts[optIdx] = e.target.value;
                               handleUpdateQuestion(index, { ...q, options: newOpts });
                             }}
-                            className="flex-1 text-xs text-stone-800 bg-transparent focus:outline-hidden"
+                            className="flex-1 text-xs text-[#111D3B] bg-transparent focus:outline-hidden"
                           />
                           {isCorrect && (
-                            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-100/80 px-2 py-0.5 rounded">
-                              Correct Choice
+                            <span className="text-[10px] font-bold text-[#2F8A77] uppercase tracking-wider">
+                              Answer Key
                             </span>
                           )}
                         </div>
@@ -538,11 +569,11 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                   </div>
                 )}
 
-                {/* Short Answer / Essay Model Answer */}
+                {/* Open-Ended Rubric */}
                 {(q.type === 'short_answer' || q.type === 'essay') && (
-                  <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-200 space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-amber-900 block">
-                      Model Answer &amp; Grading Rubric
+                  <div className="p-3 rounded-xl bg-[#EDF1FA]/60 border border-[#A9B9D3]/50 space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[#3978E8] block">
+                      Model Reasoning &amp; Rubric
                     </label>
                     <textarea
                       value={String(q.correctAnswer || '')}
@@ -553,17 +584,16 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                         })
                       }
                       rows={2}
-                      className="w-full text-xs text-stone-800 bg-white border border-amber-200 rounded-lg p-2 focus:outline-hidden leading-relaxed"
-                      placeholder="Specify key criteria, required quotes, and expected literary arguments..."
+                      className="w-full text-xs text-[#111D3B] bg-white border border-[#A9B9D3]/60 rounded-lg p-2 focus:outline-hidden leading-relaxed"
                     />
                   </div>
                 )}
 
-                {/* Explanation and Citation */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                  <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
-                      Explanation &amp; Rationale
+                {/* Explanation & Citation */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-[#EDF1FA]/35 border border-[#A9B9D3]/45 space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#111D3B]/55 block">
+                      Rationale &amp; Explanation
                     </label>
                     <textarea
                       value={q.explanation}
@@ -574,15 +604,14 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                         })
                       }
                       rows={2}
-                      className="w-full text-xs text-stone-700 bg-white border border-stone-200 rounded p-1.5 focus:outline-hidden"
-                      placeholder="Why this answer is correct..."
+                      className="w-full text-xs text-[#111D3B]/85 bg-white border border-[#A9B9D3]/45 rounded p-1.5 focus:outline-hidden"
                     />
                   </div>
 
-                  <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center justify-between">
-                      <span>Book Citation Quote</span>
-                      <span className="text-[9px] text-stone-400">Optional</span>
+                  <div className="p-3 rounded-xl bg-[#EDF1FA]/35 border border-[#A9B9D3]/45 space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#111D3B]/55 flex items-center gap-1">
+                      <Quote className="w-3 h-3 text-[#8174D5]" />
+                      <span>Source Citation Snippet</span>
                     </label>
                     <input
                       type="text"
@@ -596,8 +625,8 @@ export const QuestionnaireEditor: React.FC<QuestionnaireEditorProps> = ({
                           },
                         })
                       }
-                      className="w-full text-xs text-stone-700 bg-white border border-stone-200 rounded p-1.5 focus:outline-hidden font-serif italic"
-                      placeholder="“Exact excerpt quote from chapter...”"
+                      className="w-full text-sm text-[#111D3B] bg-white border border-[#A9B9D3]/45 rounded p-1.5 focus:outline-hidden font-serif italic"
+                      placeholder="“Exact passage from chapter...”"
                     />
                   </div>
                 </div>

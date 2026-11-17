@@ -5,7 +5,8 @@ export const SAMPLE_BOOKS: Book[] = [
     id: 'book-great-gatsby',
     title: 'The Great Gatsby',
     author: 'F. Scott Fitzgerald',
-    coverGradient: 'from-amber-700 via-amber-900 to-stone-900',
+    coverGradient: 'from-[#111D3B] via-[#1D356B] to-[#3978E8]',
+    sourceFormat: 'classic' as const,
     totalWords: 4800,
     createdAt: new Date().toISOString(),
     analysis: {
@@ -138,7 +139,8 @@ He smiled understandingly—much more than understandingly. It was one of those 
     id: 'book-frankenstein',
     title: 'Frankenstein; or, The Modern Prometheus',
     author: 'Mary Shelley',
-    coverGradient: 'from-emerald-800 via-teal-950 to-stone-900',
+    coverGradient: 'from-[#111D3B] via-[#194A4D] to-[#51BCA6]',
+    sourceFormat: 'classic' as const,
     totalWords: 4200,
     createdAt: new Date().toISOString(),
     analysis: {
@@ -239,7 +241,8 @@ As I said this I suddenly beheld the figure of a man, at some distance, advancin
     id: 'book-alice',
     title: "Alice's Adventures in Wonderland",
     author: 'Lewis Carroll',
-    coverGradient: 'from-purple-800 via-indigo-900 to-slate-900',
+    coverGradient: 'from-[#111D3B] via-[#3A3176] to-[#8174D5]',
+    sourceFormat: 'classic' as const,
     totalWords: 3800,
     createdAt: new Date().toISOString(),
     analysis: {
@@ -350,10 +353,11 @@ export const INITIAL_QUESTIONNAIRES = [
     title: 'The Great Gatsby: Comprehensive Thematic & Reading Assessment',
     description:
       'A multi-tiered questionnaire examining character motivations, symbolic imagery (the green light, eyes of Dr. Eckleburg), class divisions, and narrative voice in Chapters 1-3.',
-    targetAudience: 'high_school' as const,
+    targetAudience: 'grade_10' as const,
     difficulty: 'medium' as const,
     chapterScope: ['all'],
     questionTypes: ['multiple_choice', 'true_false', 'short_answer', 'quote_identification'] as const,
+    cognitiveDimensions: ['logical', 'rational', 'critical', 'innovative'] as const,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     questions: [
@@ -372,6 +376,7 @@ export const INITIAL_QUESTIONNAIRES = [
         explanation:
           'Nick begins Chapter 1 recalling his father\'s advice: "Whenever you feel like criticizing any one, just remember that all the people in this world haven\'t had the advantages that you\'ve had."',
         bloomsLevel: 'remember' as const,
+        cognitiveDimension: 'rational' as const,
         points: 5,
         bookCitation: {
           chapter: 'Chapter 1',
@@ -386,8 +391,9 @@ export const INITIAL_QUESTIONNAIRES = [
         options: ['Jordan Baker', 'Daisy Buchanan', 'Myrtle Wilson', 'Catherine'],
         correctAnswer: '1',
         explanation:
-          'Daisy laughs and speaks this line when greeted by Nick, typifying her flirtatious, performative charm and magnetic voice.',
+          'Daisy laughs and speaks this line when greeted by Nick, typifying her performative charm and magnetic voice.',
         bloomsLevel: 'understand' as const,
+        cognitiveDimension: 'rational' as const,
         points: 5,
         bookCitation: {
           chapter: 'Chapter 1',
@@ -407,8 +413,9 @@ export const INITIAL_QUESTIONNAIRES = [
         ],
         correctAnswer: '2',
         explanation:
-          'The billboard of Doctor T. J. Eckleburg, featuring gigantic blue retinas peering through yellow spectacles, broods over the ashheaps, frequently interpreted as the indifferent gaze of God or lost moral vision.',
+          'The billboard of Doctor T. J. Eckleburg, featuring gigantic blue retinas peering through yellow spectacles, broods over the ashheaps, symbolizing lost moral oversight.',
         bloomsLevel: 'analyze' as const,
+        cognitiveDimension: 'critical' as const,
         points: 5,
         bookCitation: {
           chapter: 'Chapter 2',
@@ -423,8 +430,9 @@ export const INITIAL_QUESTIONNAIRES = [
         options: ['True', 'False'],
         correctAnswer: '1',
         explanation:
-          'False. Nick observes that Gatsby remained sober, aloof, and remarkably disciplined, watching his guests from the marble steps without drinking.',
+          'False. Nick observes that Gatsby remained sober, aloof, and disciplined, watching his guests from the marble steps without drinking.',
         bloomsLevel: 'understand' as const,
+        cognitiveDimension: 'logical' as const,
         points: 5,
         bookCitation: {
           chapter: 'Chapter 3',
@@ -435,13 +443,14 @@ export const INITIAL_QUESTIONNAIRES = [
         id: 'q-gatsby-5',
         type: 'short_answer' as const,
         prompt:
-          'Explain what the green light at the end of Daisy’s dock represents to Jay Gatsby, and why its symbolic power is so central to the novel.',
+          'Explain what the green light at the end of Daisy’s dock represents to Jay Gatsby, and deduce why Fitzgerald places it physically across the water rather than within reach.',
         options: [],
         correctAnswer:
-          'The green light symbolizes Gatsby\'s yearning for Daisy Buchanan, the romantic idealization of the past, and the broader elusive American Dream of reaching an intoxicating, ever-receding future.',
+          'The green light symbolizes Gatsby\'s yearning for Daisy Buchanan, the romantic idealization of the past, and the elusive promise of an ever-receding future.',
         explanation:
-          'Key elements needed: Mention Daisy Buchanan, the proximity across the bay/dock, Gatsby reaching out into the darkness, and the metaphorical representation of unattainable desire / the American Dream.',
+          'Key elements needed: Mention Daisy Buchanan, the spatial separation across the bay/dock, Gatsby reaching into the darkness, and the metaphorical tension between striving and unattainability.',
         bloomsLevel: 'analyze' as const,
+        cognitiveDimension: 'innovative' as const,
         points: 10,
         bookCitation: {
           chapter: 'Chapter 1',
@@ -452,17 +461,18 @@ export const INITIAL_QUESTIONNAIRES = [
         id: 'q-gatsby-6',
         type: 'multiple_choice' as const,
         prompt:
-          'What astonishes the owl-eyed man in Gatsby\'s Gothic library during the party in Chapter 3?',
+          'What deduction does the owl-eyed man make upon examining Gatsby\'s Gothic library during the party in Chapter 3?',
         options: [
           'Every book is an ancient handwritten Latin manuscript',
-          'The books are real, physical volumes with actual pages, not hollow cardboard props',
+          'The books are real, physical volumes with actual uncut pages, not hollow cardboard props',
           'The bookshelves are entirely empty except for bottles of bourbon',
           'Gatsby has signed his own signature onto every single title',
         ],
         correctAnswer: '1',
         explanation:
-          'The owl-eyed man is astounded that Gatsby\'s library contains authentic books with real printed pages rather than fake cardboard spines, proving Gatsby\'s thoroughness in constructing his persona.',
+          'The owl-eyed man is astounded that Gatsby\'s library contains authentic books with real printed pages rather than fake cardboard spines, proving Gatsby\'s meticulousness in constructing his persona—even if he never reads them.',
         bloomsLevel: 'understand' as const,
+        cognitiveDimension: 'logical' as const,
         points: 5,
         bookCitation: {
           chapter: 'Chapter 3',

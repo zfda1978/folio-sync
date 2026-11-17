@@ -1,0 +1,146 @@
+{
+  "entities": {
+    "UserWorkspaceProfile": {
+      "title": "UserWorkspaceProfile",
+      "description": "Public workspace profile and role preference for a ZENOXIS learner or educator.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["google", "password"]
+        },
+        "workspaceRole": {
+          "type": "string",
+          "enum": ["teacher", "student"]
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "provider", "workspaceRole", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Isolated PII record containing user email and auth provider metadata.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "providerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "providerId", "updatedAt"]
+    },
+    "AssessmentAttemptRecord": {
+      "title": "AssessmentAttemptRecord",
+      "description": "Persisted ZENOXIS Assess score and duration record owned by the user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "questionnaireId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "questionnaireTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "bookTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "score": {
+          "type": "number"
+        },
+        "totalPoints": {
+          "type": "number"
+        },
+        "percentage": {
+          "type": "number"
+        },
+        "timeSpentSeconds": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "questionnaireId",
+        "questionnaireTitle",
+        "bookTitle",
+        "score",
+        "totalPoints",
+        "percentage",
+        "timeSpentSeconds",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserWorkspaceProfile" },
+      "description": "User workspace profile document."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Owner-isolated PII document."
+    },
+    "/users/{userId}/attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/AssessmentAttemptRecord" },
+      "description": "User assessment attempt records."
+    }
+  }
+}
